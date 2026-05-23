@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cloudsurf Texture AI
 
-## Getting Started
+Local-first Next.js app for creating architectural texture extraction workflows and generating two texture atlas outputs from reference images:
 
-First, run the development server:
+- Repeatable seamless material atlas, finalized to `1024 x 2048`
+- Unique facade element atlas, finalized to `4096 x 4096`
+
+Projects, workflows, exclusions, and generated atlas metadata are stored in Neon Postgres behind the dashboard API. Uploaded references, generated atlases, PBR maps, and utility outputs are stored in Cloudflare R2 and referenced by signed URLs.
+
+Authentication is handled by Neon Auth through the `@neondatabase/auth` Next.js SDK.
+
+## Run Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). If that port is occupied, run `npm run dev -- --port 3001`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## App Configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env.local` and set:
 
-## Learn More
+```bash
+NEON_AUTH_BASE_URL=...
+NEON_AUTH_JWKS_URL=...
+NEON_AUTH_COOKIE_SECRET=...
+DATABASE_URL=postgresql://...neon.tech/...sslmode=require
+R2_ACCOUNT_ID=...
+R2_BUCKET=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+```
 
-To learn more about Next.js, take a look at the following resources:
+`NEON_AUTH_BASE_URL` and `NEON_AUTH_JWKS_URL` come from the Neon Auth configuration screen. Generate `NEON_AUTH_COOKIE_SECRET` yourself with `openssl rand -base64 32`; it signs the app's local session cache cookie.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## OpenAI Configuration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Generation is disabled until `OPENAI_API_KEY` is available to the Next.js server.
 
-## Deploy on Vercel
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_IMAGE_MODEL=gpt-image-1.5
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`OPENAI_IMAGE_MODEL` is optional and defaults to `gpt-image-1.5`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Generated Files
+
+Generated textures are saved to Cloudflare R2. The app stores only R2 object keys and metadata in Neon Postgres.
+
+## Verification
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run verify:ui
+```
+
+`npm run verify:ui` expects the dev server to be running. Override the target with `VERIFY_BASE_URL=http://localhost:3001 npm run verify:ui`.

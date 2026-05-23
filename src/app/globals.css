@@ -1,26 +1,74 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --background: #090a0f;
+  --foreground: #f7f8fb;
+  --muted: #969dad;
+  --panel: #11131b;
+  --panel-strong: #171a24;
+  --line: #282d3a;
+  --accent: #61d394;
+  --accent-strong: #35b976;
+  --warning: #f4b860;
+  --danger: #ff6978;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --animate-pulse-glow: pulse-glow 6s ease-in-out infinite;
+  --animate-float: float 8s ease-in-out infinite;
+  --animate-scan: scan 4s linear infinite;
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.15; filter: blur(50px); }
+    50% { opacity: 0.35; filter: blur(75px); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(0.5deg); }
+  }
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgb(97 211 148 / 0.35);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #343a49;
+  border: 3px solid var(--background);
+  border-radius: 999px;
 }
