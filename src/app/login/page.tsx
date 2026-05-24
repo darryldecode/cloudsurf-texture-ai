@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { LoginFormNoSsr } from "@/components/login-form-no-ssr";
 import { getCurrentUser } from "@/lib/server/auth";
 
@@ -17,8 +18,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col">
         <header className="flex h-12 items-center justify-between">
           <Link href="/" className="flex items-center gap-3 text-sm font-semibold">
-            <span className="flex size-9 items-center justify-center rounded-md bg-[var(--accent)] text-[#06120b]">
-              <Sparkles className="size-5" />
+            <span className="relative flex size-10 shrink-0 overflow-hidden rounded-md border border-white/10 bg-[#090a0f]">
+              <Image src="/cloudsurf-mark.png" alt="" fill sizes="40px" className="object-cover" priority />
             </span>
             Cloudsurf Texture AI
           </Link>
