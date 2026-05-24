@@ -3,7 +3,7 @@
 import { ArrowRight, ShieldCheck } from "lucide-react";
 
 export function LoginForm({ next = "/dashboard" }: { next?: string }) {
-  const signInUrl = `/auth/sign-in?callbackURL=${encodeURIComponent(next)}`;
+  const signInUrl = `/auth/sign-in?redirectTo=${encodeURIComponent(next)}`;
 
   return (
     <div className="w-full max-w-md overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel)] shadow-2xl">

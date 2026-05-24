@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Providers } from "./providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,8 +24,6 @@ export const metadata: Metadata = {
   },
 };
 
-const neonAuthConfigured = Boolean(process.env.NEON_AUTH_BASE_URL && process.env.NEON_AUTH_COOKIE_SECRET);
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,7 +36,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
-        {neonAuthConfigured ? <Providers>{children}</Providers> : children}
+        {children}
       </body>
     </html>
   );
