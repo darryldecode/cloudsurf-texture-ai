@@ -1,11 +1,12 @@
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const navLinks = [
   { href: "/pricing", label: "Pricing" },
-  { href: "/terms", label: "Terms" },
-  { href: "/privacy", label: "Privacy" },
-  { href: "/refund-policy", label: "Refunds" },
+  { href: "/terms-and-conditions", label: "Terms & Conditions" },
+  { href: "/privacy-policy", label: "Privacy Policy" },
+  { href: "/refund-policy", label: "Refund Policy" },
 ];
 const contactHref = "mailto:contact@cloudsurf-texture-ai.0xdd.cloud";
 
@@ -14,8 +15,8 @@ export function PublicHeader() {
     <header className="border-b border-[var(--line)] bg-background/86 backdrop-blur-xl">
       <div className="mx-auto flex min-h-16 w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[var(--accent)] text-[#06120b]">
-            <Sparkles className="size-5" />
+          <span className="relative flex size-10 shrink-0 overflow-hidden rounded-md border border-white/10 bg-[#090a0f]">
+            <Image src="/cloudsurf-mark.png" alt="" fill sizes="40px" className="object-cover" priority />
           </span>
           <span className="truncate text-sm font-semibold">Cloudsurf Texture AI</span>
         </Link>
@@ -52,7 +53,12 @@ export function PublicFooter() {
   return (
     <footer className="border-t border-[var(--line)] px-4 py-8 sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 text-sm text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
-        <span className="font-medium text-foreground">Cloudsurf Texture AI</span>
+        <Link href="/" className="flex items-center gap-3 font-medium text-foreground">
+          <span className="relative flex size-8 shrink-0 overflow-hidden rounded-md border border-white/10 bg-[#090a0f]">
+            <Image src="/cloudsurf-mark.png" alt="" fill sizes="32px" className="object-cover" />
+          </span>
+          <span>Cloudsurf Texture AI</span>
+        </Link>
         <nav className="flex flex-wrap gap-4" aria-label="Footer">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} className="transition hover:text-foreground">

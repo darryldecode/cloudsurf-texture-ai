@@ -106,7 +106,7 @@ describe("credit ledger", () => {
     });
   });
 
-  it("initializes new accounts with 10 credits", async () => {
+  it("initializes new accounts with 5 credits", async () => {
     const account = await ensureCreditAccount("user-1");
 
     expect(account.balance).toBe(STARTING_CREDITS);
@@ -115,12 +115,12 @@ describe("credit ledger", () => {
   it("debits one credit and creates a ledger entry", async () => {
     const debit = await debitCredit("user-1", "atlas_generation", "workflow-1");
 
-    expect(debit).toEqual({ ok: true, balance: 9 });
+    expect(debit).toEqual({ ok: true, balance: 4 });
     expect(ledger).toEqual([
       {
         kind: "debit",
         amount: -1,
-        balanceAfter: 9,
+        balanceAfter: 4,
         reason: "atlas_generation",
         referenceId: "workflow-1",
       },

@@ -20,6 +20,27 @@ const features = [
   },
 ];
 
+const processSteps = [
+  {
+    step: "01",
+    title: "Upload building photos",
+    body: "Add facade, material, and reference shots for the structure you want to turn into production textures.",
+    preview: "photos",
+  },
+  {
+    step: "02",
+    title: "Create atlases and patterns",
+    body: "Cloudsurf Texture AI organizes the references into texture atlases and seamless pattern candidates.",
+    preview: "atlas",
+  },
+  {
+    step: "03",
+    title: "Generate PBR and night maps",
+    body: "Produce supporting material maps and emissive night-lit textures for the final scenery workflow.",
+    preview: "materials",
+  },
+];
+
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#090a0f] text-foreground">
@@ -31,7 +52,7 @@ export default function LandingPage() {
             <p className="text-sm font-medium text-[var(--accent)]">AI texture workspace</p>
             <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-normal sm:text-6xl">Generate texture atlases for scenery production.</h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-[var(--muted)]">
-              Cloudsurf Texture AI helps turn building references into organized atlas workflows, PBR maps, and emissive night textures.
+              Cloudsurf Texture AI is a web-based texture generation service for flight-sim scenery, game environment, and architectural visualization teams. It turns building references into organized atlas workflows, PBR maps, and emissive night textures.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -68,6 +89,32 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="border-b border-[var(--line)] px-4 py-16 sm:px-6 lg:py-20">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-medium text-[var(--accent)]">Feature process</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-normal sm:text-4xl">From building references to production-ready texture sets.</h2>
+            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
+              Move from source photography to organized atlas outputs, seamless materials, PBR maps, and night-lit textures without losing the structure of your scenery workflow.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {processSteps.map((item, index) => (
+              <article key={item.step} className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5">
+                <ProcessPreview variant={item.preview} />
+                <div className="mt-5 flex items-center gap-3">
+                  <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--accent)] text-xs font-bold text-[#06120b]">{item.step}</span>
+                  {index < processSteps.length - 1 ? <ArrowRight className="hidden size-4 text-[var(--muted)] lg:block" /> : null}
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="px-4 py-16 sm:px-6 lg:py-20">
         <div className="mx-auto grid w-full max-w-6xl gap-8 md:grid-cols-3">
           {features.map((feature) => (
@@ -82,6 +129,55 @@ export default function LandingPage() {
 
       <PublicFooter />
     </main>
+  );
+}
+
+function ProcessPreview({ variant }: { variant: string }) {
+  if (variant === "photos") {
+    return (
+      <div className="relative h-48 overflow-hidden rounded-md border border-[var(--line)] bg-[#0d1018]">
+        <div className="absolute inset-4 rounded-md bg-[linear-gradient(135deg,#29313b,#7a8584_42%,#2e3d48_43%,#121720)]" />
+        <div className="absolute left-9 top-8 h-28 w-20 rounded-sm bg-[#b7bab1] shadow-xl" />
+        <div className="absolute left-12 top-12 grid w-14 grid-cols-3 gap-1">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <span key={index} className="h-3 rounded-[2px] bg-[#23303a]" />
+          ))}
+        </div>
+        <div className="absolute bottom-5 right-5 rounded-md border border-white/10 bg-[#090a0f]/90 px-3 py-2 text-xs text-[var(--muted)]">reference photos</div>
+      </div>
+    );
+  }
+
+  if (variant === "atlas") {
+    return (
+      <div className="h-48 overflow-hidden rounded-md border border-[var(--line)] bg-[#0d1018] p-4">
+        <div className="grid h-full grid-cols-4 gap-2">
+          {[
+            "bg-[linear-gradient(135deg,#5a5d58,#c7c4b7)]",
+            "bg-[linear-gradient(135deg,#283444,#788a9c)]",
+            "bg-[linear-gradient(135deg,#323232,#777,#d0d0d0)]",
+            "bg-[linear-gradient(135deg,#24312f,#4c796c)]",
+            "bg-[repeating-linear-gradient(90deg,#1f2b32_0_8px,#5f6e72_8px_16px)]",
+            "bg-[repeating-linear-gradient(45deg,#4d4b42_0_6px,#9d9a8e_6px_12px)]",
+            "bg-[linear-gradient(135deg,#151923,#394454)]",
+            "bg-[linear-gradient(135deg,#6c6d65,#222831)]",
+          ].map((className, index) => (
+            <div key={index} className={`rounded-sm border border-white/10 ${className}`} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-48 overflow-hidden rounded-md border border-[var(--line)] bg-[#0d1018] p-4">
+      <div className="grid h-full grid-cols-2 gap-3">
+        <div className="rounded-md bg-[linear-gradient(135deg,#253450,#7188b8_48%,#9b73bd)]" />
+        <div className="rounded-md bg-[linear-gradient(135deg,#151515,#7d7d7d,#d7d7d7)]" />
+        <div className="rounded-md bg-[linear-gradient(135deg,#171a16,#48564a,#9aa390)]" />
+        <div className="rounded-md bg-[linear-gradient(180deg,#05070c,#05070c_38%,#f6cf70_40%,#f6cf70_47%,#05070c_50%)]" />
+      </div>
+    </div>
   );
 }
 

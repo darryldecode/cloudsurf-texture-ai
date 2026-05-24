@@ -10,6 +10,7 @@ const sections: LegalSection[] = [
   {
     title: "1. Acceptance of Terms",
     body: [
+      "Cloudsurf Software Development Services operates Cloudsurf Texture AI. These Terms and Conditions are between you and Cloudsurf Software Development Services.",
       "These Terms and Conditions govern access to Cloudsurf Texture AI, a web application for generating texture atlases, PBR maps, emissive maps, and related digital texture outputs. By creating an account, buying credits, uploading files, or using the service, you agree to these terms.",
       "If you use the service on behalf of a company, studio, or other organization, you represent that you have authority to bind that organization to these terms.",
     ],
@@ -76,7 +77,7 @@ export default function TermsPage() {
     <LegalPage
       eyebrow="Terms and Conditions"
       title="Terms for using Cloudsurf Texture AI."
-      body="These generic terms describe how accounts, credits, uploaded references, generated texture outputs, and Paddle payments are handled."
+      body="These Terms and Conditions explain how accounts, credits, uploaded references, generated texture outputs, and Paddle payments are handled when you use Cloudsurf Texture AI."
       sections={sections}
     />
   );

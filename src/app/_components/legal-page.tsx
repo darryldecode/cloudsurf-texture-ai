@@ -25,7 +25,7 @@ export function LegalPage({
             <p className="text-sm font-semibold">Cloudsurf Texture AI</p>
             <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Last updated May 24, 2026</p>
             <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
-              This template should be reviewed by counsel before production use.
+              These policies apply to purchases, accounts, generated outputs, and use of the Cloudsurf Texture AI service.
             </p>
           </aside>
           <div className="space-y-5">

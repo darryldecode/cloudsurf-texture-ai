@@ -1,7 +1,7 @@
 import { query } from "./db";
 import type { QueryResultRow } from "@neondatabase/serverless";
 
-export const STARTING_CREDITS = 10;
+export const STARTING_CREDITS = 5;
 export const GENERATION_CREDIT_COST = 1;
 
 export type CreditReason = "atlas_generation" | "pbr_generation" | "utility_pbr_generation" | "utility_emissive_generation";

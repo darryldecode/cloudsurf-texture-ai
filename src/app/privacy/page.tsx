@@ -77,7 +77,7 @@ export default function PrivacyPage() {
     <LegalPage
       eyebrow="Privacy Policy"
       title="How Cloudsurf Texture AI handles data."
-      body="This generic policy explains the account, project, uploaded image, generated asset, payment, and provider data used to run an AI texture generation workflow."
+      body="This Privacy Policy explains how Cloudsurf Texture AI collects, uses, stores, and shares account, project, uploaded image, generated asset, payment, and provider data."
       sections={sections}
     />
   );

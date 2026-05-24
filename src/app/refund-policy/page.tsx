@@ -63,7 +63,7 @@ export default function RefundPolicyPage() {
     <LegalPage
       eyebrow="Refund Policy"
       title="Refunds for Cloudsurf Texture AI credits."
-      body="This generic policy describes when prepaid credit purchases may be refunded, how used credits are handled, and how Paddle payment processing fits into the flow."
+      body="This Refund Policy explains when prepaid credit purchases may be refunded, how used credits are handled, and how Paddle payment processing applies to purchases and approved refunds."
       sections={sections}
     />
   );
