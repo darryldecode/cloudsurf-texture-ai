@@ -15,7 +15,19 @@ vi.mock("@/lib/server/credits", () => ({
         required,
       },
       { status: 402 },
-    ),
+  ),
+}));
+
+vi.mock("@/lib/server/image-ai-provider", () => ({
+  getImageAiStatus: vi.fn(() => ({
+    configured: false,
+    provider: "google",
+    model: "gemini-2.5-flash-image",
+    missingEnvVar: "GEMINI_API_KEY",
+  })),
+  imageAiConfigurationMessage: vi.fn((status: { provider: string; missingEnvVar?: string }) =>
+    `Image AI provider "${status.provider}" is not configured. Set ${status.missingEnvVar}.`,
+  ),
 }));
 
 vi.mock("@/lib/server/texture-atlas-generation", () => ({
@@ -23,12 +35,12 @@ vi.mock("@/lib/server/texture-atlas-generation", () => ({
   MAX_ATLAS_IMAGES: 16,
   MAX_ATLAS_IMAGE_SIZE: 50 * 1024 * 1024,
   generateTextureAtlases: vi.fn(),
-  getConfiguredImageModel: vi.fn(() => "gpt-image-1.5"),
 }));
 
 import { debitCredit, refundCredit } from "@/lib/server/credits";
 import { requireUserId } from "@/lib/server/auth";
 import { generateTextureAtlases } from "@/lib/server/texture-atlas-generation";
+import { getImageAiStatus } from "@/lib/server/image-ai-provider";
 import { GET, POST } from "./route";
 
 describe("texture atlas generation route", () => {
@@ -39,17 +51,25 @@ describe("texture atlas generation route", () => {
     vi.mocked(requireUserId).mockResolvedValue("user-1");
     vi.mocked(debitCredit).mockResolvedValue({ ok: true, balance: 9 });
     vi.mocked(generateTextureAtlases).mockResolvedValue([]);
+    vi.mocked(getImageAiStatus).mockReturnValue({
+      configured: false,
+      provider: "google",
+      model: "gemini-2.5-flash-image",
+      missingEnvVar: "GEMINI_API_KEY",
+    });
   });
 
-  it("reports missing OpenAI configuration without crashing", async () => {
+  it("reports missing image AI provider configuration without crashing", async () => {
     const response = await GET();
     const data = await response.json();
 
     expect(data.configured).toBe(false);
-    expect(data.model).toBe("gpt-image-1.5");
+    expect(data.provider).toBe("google");
+    expect(data.model).toBe("gemini-2.5-flash-image");
+    expect(data.missingEnvVar).toBe("GEMINI_API_KEY");
   });
 
-  it("rejects generation when OPENAI_API_KEY is not configured", async () => {
+  it("rejects generation when the image AI provider key is not configured", async () => {
     const formData = new FormData();
     formData.set("workflowId", "workflow-1");
 
@@ -57,13 +77,13 @@ describe("texture atlas generation route", () => {
     const data = await response.json();
 
     expect(response.status).toBe(503);
-    expect(data.error).toContain("OPENAI_API_KEY");
+    expect(data.error).toContain("GEMINI_API_KEY");
     expect(requireUserId).not.toHaveBeenCalled();
     expect(debitCredit).not.toHaveBeenCalled();
   });
 
   it("returns 402 when the account has insufficient credits", async () => {
-    process.env.OPENAI_API_KEY = "test-key";
+    vi.mocked(getImageAiStatus).mockReturnValue({ configured: true, provider: "google", model: "gemini-2.5-flash-image" });
     vi.mocked(debitCredit).mockResolvedValue({ ok: false, balance: 0 });
 
     const formData = new FormData();
@@ -79,7 +99,7 @@ describe("texture atlas generation route", () => {
   });
 
   it("refunds the credit when generation fails server-side", async () => {
-    process.env.OPENAI_API_KEY = "test-key";
+    vi.mocked(getImageAiStatus).mockReturnValue({ configured: true, provider: "google", model: "gemini-2.5-flash-image" });
     vi.mocked(generateTextureAtlases).mockRejectedValue(new Error("OpenAI failed"));
 
     const formData = new FormData();

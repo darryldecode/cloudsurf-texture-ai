@@ -5,6 +5,7 @@ export const STARTING_CREDITS = 10;
 export const GENERATION_CREDIT_COST = 1;
 
 export type CreditReason = "atlas_generation" | "pbr_generation" | "utility_pbr_generation" | "utility_emissive_generation";
+export type CreditPurchaseReason = "credit_purchase";
 
 type CreditAccountRow = QueryResultRow & {
   user_id: string;
@@ -15,6 +16,7 @@ type CreditAccountRow = QueryResultRow & {
 
 type CreditTransactionRow = QueryResultRow & {
   balance_after: number;
+  applied?: boolean;
 };
 
 function iso(value: string | Date) {
@@ -87,6 +89,54 @@ export async function refundCredit(userId: string, reason: CreditReason, referen
   );
 
   return { balance: Number(result.rows[0]?.balance_after ?? (await getCreditBalance(userId))) };
+}
+
+export async function purchaseCredits(userId: string, amount: number, reason: CreditPurchaseReason, referenceId: string) {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error("Credit purchase amount must be a positive integer.");
+  }
+
+  await ensureCreditAccount(userId);
+  const id = crypto.randomUUID();
+  const result = await query<CreditTransactionRow>(
+    `with inserted as (
+       insert into credit_transactions (id, user_id, kind, amount, balance_after, reason, reference_id, created_at)
+       values ($3, $1, 'purchase', $2, 0, $4, $5, now())
+       on conflict do nothing
+       returning id
+     ),
+     updated as (
+       update credit_accounts
+       set balance = balance + $2, updated_at = now()
+       where user_id = $1 and exists (select 1 from inserted)
+       returning balance
+     ),
+     finalized as (
+       update credit_transactions
+       set balance_after = updated.balance
+       from updated
+       where credit_transactions.id = $3
+       returning credit_transactions.balance_after
+     ),
+     existing as (
+       select balance_after
+       from credit_transactions
+       where user_id = $1 and kind = 'purchase' and reference_id = $5 and not exists (select 1 from inserted)
+       limit 1
+     )
+     select balance_after, true as applied from finalized
+     union all
+     select balance_after, false as applied from existing
+     limit 1`,
+    [userId, amount, id, reason, referenceId],
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    return { balance: await getCreditBalance(userId), applied: false };
+  }
+
+  return { balance: Number(row.balance_after), applied: row.applied !== false };
 }
 
 export function insufficientCreditsResponse(balance: number, required = GENERATION_CREDIT_COST) {

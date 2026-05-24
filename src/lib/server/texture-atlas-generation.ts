@@ -1,6 +1,6 @@
-import OpenAI from "openai";
 import sharp from "sharp";
 import { buildSingleAtlasPrompt } from "@/lib/generation/prompt";
+import { generateImageEdit, getImageAiStatus } from "@/lib/server/image-ai-provider";
 import { readR2ImageFile, saveR2ImageFile } from "@/lib/server/image-storage";
 import type { GeneratedAtlas } from "@/lib/types";
 
@@ -8,19 +8,8 @@ export const MAX_ATLAS_IMAGES = 16;
 export const MAX_ATLAS_IMAGE_SIZE = 50 * 1024 * 1024;
 export const ACCEPTED_ATLAS_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
-let openai: OpenAI | null = null;
-
-function getOpenAI() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured.");
-  }
-
-  openai ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return openai;
-}
-
 export function getConfiguredImageModel() {
-  return process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1.5";
+  return getImageAiStatus().model;
 }
 
 async function toPngBuffer(base64: string, width: number, height: number) {
@@ -38,25 +27,22 @@ async function createAtlasImage(
   exclusions: string,
   kind: "materials" | "facade",
 ): Promise<GeneratedAtlas> {
-  const model = getConfiguredImageModel();
   const size = kind === "materials" ? "1024x1536" : "1024x1024";
+  const aspectRatio = kind === "materials" ? "2:3" : "1:1";
   const target = kind === "materials" ? { width: 1024, height: 2048 } : { width: 4096, height: 4096 };
-  const response = await getOpenAI().images.edit({
-    model,
-    image: images,
+  const response = await generateImageEdit({
+    images: images.map((image) => ({
+      data: image,
+      mimeType: image.type || "image/png",
+      filename: image.name || `${kind}-reference.png`,
+    })),
     prompt: buildSingleAtlasPrompt(exclusions, kind),
-    n: 1,
     size,
+    aspectRatio,
     quality: "high",
-    output_format: "png",
+    outputFormat: "png",
   });
-  const b64 = response.data?.[0]?.b64_json;
-
-  if (!b64) {
-    throw new Error("OpenAI returned no image data.");
-  }
-
-  const output = await toPngBuffer(b64, target.width, target.height);
+  const output = await toPngBuffer(response.b64Json, target.width, target.height);
   const saved = await saveR2ImageFile({
     userId,
     pathSegments: ["workflows", workflowId, "atlases"],
@@ -69,7 +55,7 @@ async function createAtlasImage(
     title: kind === "materials" ? "Repeatable Seamless Material Atlas" : "Unique Facade Element Atlas",
     width: target.width,
     height: target.height,
-    model,
+    model: response.model,
     url: saved.url,
     storagePath: saved.storagePath,
     generatedAt: new Date().toISOString(),

@@ -3,11 +3,14 @@ import { POST } from "./route";
 
 describe("PBR generation route", () => {
   beforeEach(() => {
+    delete process.env.IMAGE_AI_PROVIDER;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GOOGLE_IMAGE_MODEL;
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_IMAGE_MODEL;
   });
 
-  it("rejects PBR generation when OPENAI_API_KEY is not configured", async () => {
+  it("rejects PBR generation when the image AI provider key is not configured", async () => {
     const response = await POST(
       new Request("http://localhost/api/generate-pbr", {
         method: "POST",
@@ -23,6 +26,6 @@ describe("PBR generation route", () => {
     const data = await response.json();
 
     expect(response.status).toBe(503);
-    expect(data.error).toContain("OPENAI_API_KEY");
+    expect(data.error).toContain("GEMINI_API_KEY");
   });
 });

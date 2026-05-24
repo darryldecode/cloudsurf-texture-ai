@@ -18,6 +18,21 @@ vi.mock("@/lib/server/credits", () => ({
   ensureCreditAccount: mocks.ensureCreditAccount,
 }));
 
+vi.mock("@/lib/server/paddle", () => ({
+  getPaddleStatus: () => ({ configured: true, environment: "sandbox" }),
+  getPublicPaddleCreditPacks: () => [
+    {
+      id: "starter",
+      label: "Starter pack",
+      credits: 25,
+      priceUsd: 39,
+      description: "For a few small texture batches.",
+      priceEnvVar: "PADDLE_STARTER_PRICE_ID",
+      configured: true,
+    },
+  ],
+}));
+
 import { GET } from "./route";
 
 describe("dashboard account route", () => {
@@ -48,6 +63,21 @@ describe("dashboard account route", () => {
       credits: {
         balance: 10,
       },
+      billing: {
+        configured: true,
+        environment: "sandbox",
+      },
+      creditPacks: [
+        {
+          id: "starter",
+          label: "Starter pack",
+          credits: 25,
+          priceUsd: 39,
+          description: "For a few small texture batches.",
+          priceEnvVar: "PADDLE_STARTER_PRICE_ID",
+          configured: true,
+        },
+      ],
     });
   });
 });

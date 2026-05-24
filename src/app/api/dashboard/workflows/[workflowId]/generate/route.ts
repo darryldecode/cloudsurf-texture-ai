@@ -3,6 +3,7 @@ import { getWorkflow, saveWorkflow, touchProject } from "@/lib/server/dashboard-
 import { withUser } from "@/lib/server/api-response";
 import { generateTextureAtlases } from "@/lib/server/texture-atlas-generation";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
+import { getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,8 +55,9 @@ async function finishGeneration(userId: string, workflowId: string) {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ workflowId: string }> }) {
-  if (!process.env.OPENAI_API_KEY) {
-    return jsonError("OPENAI_API_KEY is not configured. Add it locally to enable generation.", 503);
+  const aiStatus = getImageAiStatus();
+  if (!aiStatus.configured) {
+    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
   }
 
   return withUser(async (userId) => {

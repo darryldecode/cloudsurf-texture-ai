@@ -1,7 +1,7 @@
-import OpenAI, { toFile } from "openai";
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { buildPbrPrompt } from "@/lib/generation/pbr-prompt";
+import { generateImageEdit, getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
 import { readR2ImageFile, saveR2ImageFile } from "@/lib/server/image-storage";
 import { requireUserId } from "@/lib/server/auth";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
@@ -13,21 +13,6 @@ export const dynamic = "force-dynamic";
 const MAX_IMAGE_SIZE = 50 * 1024 * 1024;
 const ACCEPTED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const PBR_MAPS: PbrMapKind[] = ["metallic", "roughness", "normal"];
-
-let openai: OpenAI | null = null;
-
-function getOpenAI() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured.");
-  }
-
-  openai ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return openai;
-}
-
-function getConfiguredModel() {
-  return process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1.5";
-}
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -82,24 +67,15 @@ async function generatePbrMap({
   height: number;
   kind: PbrMapKind;
 }) {
-  const model = getConfiguredModel();
-  const image = await toFile(sourceImage, "utility-source-atlas.png", { type: "image/png" });
-  const response = await getOpenAI().images.edit({
-    model,
-    image,
+  const response = await generateImageEdit({
+    images: [{ data: sourceImage, mimeType: "image/png", filename: "utility-source-atlas.png" }],
     prompt: buildPbrPrompt(kind),
-    n: 1,
     size: supportedSize(width, height),
+    aspectRatio: aspectRatioForSize(width, height),
     quality: "high",
-    output_format: "png",
+    outputFormat: "png",
   });
-  const b64 = response.data?.[0]?.b64_json;
-
-  if (!b64) {
-    throw new Error(`OpenAI returned no ${kind} map image data.`);
-  }
-
-  const output = await resizePbrOutput(b64, width, height, kind);
+  const output = await resizePbrOutput(response.b64Json, width, height, kind);
   const saved = await saveR2ImageFile({
     userId,
     pathSegments: ["utilities", jobId, "pbr"],
@@ -114,14 +90,15 @@ async function generatePbrMap({
     height,
     url: saved.url,
     storagePath: saved.storagePath,
-    model,
+    model: response.model,
     generatedAt: new Date().toISOString(),
   };
 }
 
 export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return jsonError("OPENAI_API_KEY is not configured. Add it locally to enable PBR generation.", 503);
+  const aiStatus = getImageAiStatus();
+  if (!aiStatus.configured) {
+    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
   }
 
   let formData: FormData;
@@ -189,4 +166,10 @@ async function normalizeStoredImage(storagePath: string) {
   }
 
   return { buffer, width: metadata.width, height: metadata.height };
+}
+
+function aspectRatioForSize(width: number, height: number) {
+  if (width > height) return "3:2";
+  if (height > width) return "2:3";
+  return "1:1";
 }

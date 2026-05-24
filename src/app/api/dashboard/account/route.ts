@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withUser } from "@/lib/server/api-response";
 import { getCurrentUser } from "@/lib/server/auth";
 import { ensureCreditAccount } from "@/lib/server/credits";
+import { getPaddleStatus, getPublicPaddleCreditPacks } from "@/lib/server/paddle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ export async function GET() {
       credits: {
         balance: credits.balance,
       },
+      billing: getPaddleStatus(),
+      creditPacks: getPublicPaddleCreditPacks(),
     });
   });
 }

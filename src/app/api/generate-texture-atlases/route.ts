@@ -3,10 +3,10 @@ import { requireUserId } from "@/lib/server/auth";
 import {
   ACCEPTED_ATLAS_IMAGE_TYPES,
   generateTextureAtlases,
-  getConfiguredImageModel,
   MAX_ATLAS_IMAGES,
   MAX_ATLAS_IMAGE_SIZE,
 } from "@/lib/server/texture-atlas-generation";
+import { getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
 
 export const runtime = "nodejs";
@@ -17,9 +17,13 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function GET() {
+  const aiStatus = getImageAiStatus();
+
   return NextResponse.json({
-    configured: Boolean(process.env.OPENAI_API_KEY),
-    model: getConfiguredImageModel(),
+    configured: aiStatus.configured,
+    provider: aiStatus.provider,
+    model: aiStatus.model,
+    missingEnvVar: aiStatus.missingEnvVar,
     acceptedTypes: Array.from(ACCEPTED_ATLAS_IMAGE_TYPES),
     maxImages: MAX_ATLAS_IMAGES,
     maxImageSize: MAX_ATLAS_IMAGE_SIZE,
@@ -27,8 +31,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return jsonError("OPENAI_API_KEY is not configured. Add it locally to enable generation.", 503);
+  const aiStatus = getImageAiStatus();
+  if (!aiStatus.configured) {
+    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
   }
 
   let formData: FormData;

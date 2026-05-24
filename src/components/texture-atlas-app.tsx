@@ -30,7 +30,9 @@ import { cn, formatDate, safeName } from "@/lib/utils";
 
 type ApiStatus = {
   configured: boolean;
+  provider: string;
   model: string;
+  missingEnvVar?: string;
   maxImages: number;
   maxImageSize: number;
   acceptedTypes: string[];
@@ -48,6 +50,20 @@ type AccountStatus = {
   credits: {
     balance: number;
   };
+  billing?: {
+    configured: boolean;
+    environment: string;
+    missingEnvVar?: string;
+  };
+  creditPacks?: {
+    id: string;
+    label: string;
+    credits: number;
+    priceUsd: number;
+    description: string;
+    configured: boolean;
+    priceEnvVar: string;
+  }[];
 };
 
 type ProjectSummary = {
@@ -281,7 +297,17 @@ export function TextureAtlasApp({ basePath = "" }: { basePath?: string }) {
     fetch("/api/generate-texture-atlases")
       .then((response) => response.json())
       .then((data: ApiStatus) => setApiStatus(data))
-      .catch(() => setApiStatus({ configured: false, model: "gpt-image-1.5", maxImages: 16, maxImageSize: 52428800, acceptedTypes: acceptedImageTypes }));
+      .catch(() =>
+        setApiStatus({
+          configured: false,
+          provider: "google",
+          model: "gemini-2.5-flash-image",
+          missingEnvVar: "GEMINI_API_KEY",
+          maxImages: 16,
+          maxImageSize: 52428800,
+          acceptedTypes: acceptedImageTypes,
+        }),
+      );
   }, []);
 
   const refreshAccount = useCallback(async () => {
@@ -297,8 +323,10 @@ export function TextureAtlasApp({ basePath = "" }: { basePath?: string }) {
   }, []);
 
   useEffect(() => {
-    refreshAccount().catch((error) => {
-      setNotice({ tone: "error", message: error instanceof Error ? error.message : "Could not load account credits." });
+    queueMicrotask(() => {
+      refreshAccount().catch((error) => {
+        setNotice({ tone: "error", message: error instanceof Error ? error.message : "Could not load account credits." });
+      });
     });
   }, [refreshAccount]);
 
@@ -462,6 +490,7 @@ function AccountSurface({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+  const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
 
   useEffect(() => {
     refreshAccount().catch((error) => {
@@ -508,11 +537,33 @@ function AccountSurface({
 
   const displayName = accountStatus?.user?.name || accountStatus?.user?.email || "Account";
   const balance = accountStatus?.credits.balance;
-  const packages = [
-    { credits: 25, label: "Starter pack" },
-    { credits: 100, label: "Production pack" },
-    { credits: 250, label: "Studio pack" },
+  const packages = accountStatus?.creditPacks ?? [
+    { id: "starter", credits: 25, label: "Starter pack", priceUsd: 39, description: "For a few small texture batches.", configured: false, priceEnvVar: "PADDLE_STARTER_PRICE_ID" },
+    { id: "production", credits: 100, label: "Production pack", priceUsd: 129, description: "Best fit for regular scenery work.", configured: false, priceEnvVar: "PADDLE_PRODUCTION_PRICE_ID" },
+    { id: "studio", credits: 250, label: "Studio pack", priceUsd: 279, description: "Lowest per-credit price for larger runs.", configured: false, priceEnvVar: "PADDLE_STUDIO_PRICE_ID" },
   ];
+
+  async function buyCredits(packId: string) {
+    setBuyingPackId(packId);
+
+    try {
+      const response = await fetch("/api/dashboard/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not start checkout.");
+      }
+
+      window.location.assign(data.url);
+    } catch (error) {
+      setBuyingPackId(null);
+      setNotice({ tone: "error", message: error instanceof Error ? error.message : "Could not start checkout." });
+    }
+  }
 
   return (
     <section className="space-y-6">
@@ -556,19 +607,27 @@ function AccountSurface({
             <div className="mt-5 grid gap-3">
               {packages.map((pack) => (
                 <button
-                  key={pack.credits}
+                  key={pack.id}
                   type="button"
-                  disabled
-                  className="flex h-12 items-center justify-between rounded-md border border-[var(--line)] bg-[#151823] px-4 text-left text-sm opacity-60"
+                  disabled={buyingPackId !== null || !accountStatus?.billing?.configured || !pack.configured}
+                  onClick={() => void buyCredits(pack.id)}
+                  className="flex min-h-14 items-center justify-between gap-4 rounded-md border border-[var(--line)] bg-[#151823] px-4 py-3 text-left text-sm transition hover:border-[#4b5264] hover:bg-[#1d2230] disabled:opacity-60"
                 >
                   <span>
                     <span className="block font-semibold">{pack.label}</span>
-                    <span className="text-xs text-[var(--muted)]">{pack.credits} credits</span>
+                    <span className="text-xs text-[var(--muted)]">
+                      {pack.credits} credits · ${pack.priceUsd}
+                    </span>
                   </span>
-                  <span className="text-xs text-[var(--muted)]">Payment coming soon</span>
+                  <span className="text-xs font-medium text-[var(--accent)]">{buyingPackId === pack.id ? "Opening..." : "Buy credits"}</span>
                 </button>
               ))}
             </div>
+            {!accountStatus?.billing?.configured ? (
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Paddle billing is not configured{accountStatus?.billing?.missingEnvVar ? `: set ${accountStatus.billing.missingEnvVar}` : ""}.
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -653,7 +712,7 @@ function UtilitiesSurface({
         </div>
         <StatusPill tone={apiStatus?.configured ? "success" : "info"}>
           {apiStatus?.configured ? <Check className="size-3.5" /> : <AlertCircle className="size-3.5" />}
-          {apiStatus?.configured ? apiStatus.model : "OpenAI key needed"}
+          {apiStatus?.configured ? `${apiStatus.provider} · ${apiStatus.model}` : "Image AI key needed"}
         </StatusPill>
       </div>
 
@@ -1190,7 +1249,7 @@ function UtilityGeneratePanel({
         <WandSparkles className="size-4" />
         {buttonLabel}
       </PrimaryButton>
-      {missingKey ? <p className="mt-3 text-xs text-[var(--muted)]">OPENAI_API_KEY is not configured</p> : null}
+      {missingKey ? <p className="mt-3 text-xs text-[var(--muted)]">Image AI provider is not configured</p> : null}
       {!missingKey && checkingCredits ? <p className="mt-3 text-xs text-[var(--muted)]">Checking credits...</p> : null}
       {!missingKey && !checkingCredits && missingCredits ? (
         <p className="mt-3 text-xs text-[var(--muted)]">Add credits from Account to generate</p>
@@ -1613,21 +1672,26 @@ function WorkflowSurface({
   const hasCredits = Boolean(accountStatus && accountStatus.credits.balance >= 1);
 
   useEffect(() => {
-    setExclusions(workflow.exclusions);
+    queueMicrotask(() => setExclusions(workflow.exclusions));
   }, [workflow.exclusions, workflow.id]);
 
   useEffect(() => {
     if (workflow.status !== "generating") {
-      setGenerating(false);
-      setStep("");
+      queueMicrotask(() => {
+        setGenerating(false);
+        setStep("");
+      });
       return;
     }
 
     let cancelled = false;
     let timer: number | undefined;
 
-    setGenerating(true);
-    setStep(workflow.statusMessage ?? "Processing reference images");
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setGenerating(true);
+      setStep(workflow.statusMessage ?? "Processing reference images");
+    });
 
     async function pollGeneration() {
       try {
@@ -1781,7 +1845,7 @@ function WorkflowSurface({
 
   async function generateAtlases() {
     if (!apiStatus?.configured) {
-      setNotice({ tone: "error", message: "Add OPENAI_API_KEY locally to enable generation." });
+      setNotice({ tone: "error", message: `Set ${apiStatus?.missingEnvVar ?? "the image AI provider key"} to enable generation.` });
       return;
     }
 
@@ -1825,7 +1889,7 @@ function WorkflowSurface({
 
   async function generatePbr(atlas: GeneratedAtlas) {
     if (!apiStatus?.configured) {
-      setNotice({ tone: "error", message: "Add OPENAI_API_KEY locally to enable PBR generation." });
+      setNotice({ tone: "error", message: `Set ${apiStatus?.missingEnvVar ?? "the image AI provider key"} to enable PBR generation.` });
       return;
     }
 
@@ -1881,7 +1945,7 @@ function WorkflowSurface({
 
   const generationDisabled = activeGeneration || uploading || !workflow.images.length || !apiStatus?.configured || !creditsReady || !hasCredits;
   const generationReason = !apiStatus?.configured
-    ? "OPENAI_API_KEY is not configured"
+    ? "Image AI provider is not configured"
     : !workflow.images.length
       ? "Upload reference images first"
       : uploading
@@ -2303,7 +2367,7 @@ function PbrColumn({
         <WandSparkles className="size-4" />
         Generate PBR
       </PrimaryButton>
-      {!apiConfigured ? <p className="mt-3 text-xs text-[var(--muted)]">OPENAI_API_KEY is not configured</p> : null}
+      {!apiConfigured ? <p className="mt-3 text-xs text-[var(--muted)]">Image AI provider is not configured</p> : null}
       {apiConfigured && !atlas.url ? <p className="mt-3 text-xs text-[var(--muted)]">Saved atlas file required</p> : null}
       {apiConfigured && atlas.url && !creditsReady ? <p className="mt-3 text-xs text-[var(--muted)]">Checking credits...</p> : null}
       {apiConfigured && atlas.url && creditsReady && !hasCredits ? (

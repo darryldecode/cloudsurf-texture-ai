@@ -35,16 +35,42 @@ R2_SECRET_ACCESS_KEY=...
 
 `NEON_AUTH_BASE_URL` and `NEON_AUTH_JWKS_URL` come from the Neon Auth configuration screen. Generate `NEON_AUTH_COOKIE_SECRET` yourself with `openssl rand -base64 32`; it signs the app's local session cache cookie.
 
-## OpenAI Configuration
+## Image AI Configuration
 
-Generation is disabled until `OPENAI_API_KEY` is available to the Next.js server.
+Generation is disabled until the selected image AI provider key is available to the Next.js server. The default trial provider is Google.
 
 ```bash
+IMAGE_AI_PROVIDER=google
+GEMINI_API_KEY=...
+GOOGLE_IMAGE_MODEL=gemini-3.1-flash-image-preview
+GOOGLE_IMAGE_SIZE=2K
+
+# Fallback provider:
+IMAGE_AI_PROVIDER=openai
 OPENAI_API_KEY=sk-...
-OPENAI_IMAGE_MODEL=gpt-image-1.5
+OPENAI_IMAGE_MODEL=gpt-image-2
 ```
 
-`OPENAI_IMAGE_MODEL` is optional and defaults to `gpt-image-1.5`.
+`IMAGE_AI_PROVIDER` supports `google` and `openai`. Google defaults to `gemini-2.5-flash-image`, but `gemini-3.1-flash-image-preview` is the recommended quality trial. `GOOGLE_IMAGE_SIZE` applies to Gemini 3 image models and supports `0.5K`, `1K`, `2K`, and `4K`. OpenAI defaults to `gpt-image-2`.
+
+## Paddle Billing
+
+Credit recharges use Paddle one-time prices and fulfill credits from the `transaction.completed` webhook. The starter pack is 25 credits for `$39`, production is 100 credits for `$129`, and studio is 250 credits for `$279`; these prices are intentionally based on OpenAI image usage as the cost floor.
+
+```bash
+PADDLE_ENVIRONMENT=sandbox
+NEXT_PUBLIC_PADDLE_ENVIRONMENT=sandbox
+PADDLE_API_KEY=...
+PADDLE_WEBHOOK_SECRET=...
+NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=...
+PADDLE_CHECKOUT_URL=http://localhost:3000/checkout
+APP_URL=http://localhost:3000
+PADDLE_STARTER_PRICE_ID=pri_...
+PADDLE_PRODUCTION_PRICE_ID=pri_...
+PADDLE_STUDIO_PRICE_ID=pri_...
+```
+
+Set Paddle's default payment link to `/checkout` for the matching environment. The page loads Paddle.js and opens the `_ptxn` transaction returned by Paddle. Configure your webhook endpoint at `/api/paddle/webhook`.
 
 ## Generated Files
 
