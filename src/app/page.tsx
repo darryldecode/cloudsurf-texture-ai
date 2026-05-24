@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, FolderKanban, Moon, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, FolderKanban, Moon } from "lucide-react";
+import { PublicFooter, PublicHeader } from "./_components/public-chrome";
 
 const features = [
   {
@@ -22,28 +23,7 @@ const features = [
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#090a0f] text-foreground">
-      <header className="border-b border-[var(--line)] bg-background/86 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[var(--accent)] text-[#06120b]">
-              <Sparkles className="size-5" />
-            </span>
-            <span className="truncate text-sm font-semibold">Cloudsurf Texture AI</span>
-          </Link>
-          <nav className="flex items-center gap-2" aria-label="Primary">
-            <Link href="/login" className="rounded-md px-3 py-2 text-sm font-medium text-[var(--muted)] transition hover:bg-[#151923] hover:text-foreground">
-              Login
-            </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[#06120b] transition hover:bg-[var(--accent-strong)]"
-            >
-              Dashboard
-              <ArrowRight className="size-4" />
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicHeader />
 
       <section className="border-b border-[var(--line)] bg-[radial-gradient(circle_at_top_left,#162033_0,#090a0f_34rem)] px-4 py-20 sm:px-6 lg:py-28">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1fr_440px] lg:gap-16">
@@ -100,12 +80,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-[var(--line)] px-4 py-8 sm:px-6">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 text-sm text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
-          <span className="font-medium text-foreground">Cloudsurf Texture AI</span>
-          <span>Texture generation for scenery production workflows.</span>
-        </div>
-      </footer>
+      <PublicFooter />
     </main>
   );
 }
