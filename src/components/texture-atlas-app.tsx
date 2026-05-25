@@ -13,6 +13,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   UploadCloud,
@@ -65,6 +66,24 @@ type AccountStatus = {
     configured: boolean;
     priceEnvVar: string;
   }[];
+  settings: {
+    imageAi: {
+      provider: string;
+      model: string;
+    };
+    imageModelOptions: {
+      provider: string;
+      model: string;
+      label: string;
+      description: string;
+    }[];
+    imageAiStatus: {
+      configured: boolean;
+      provider: string;
+      model: string;
+      missingEnvVar?: string;
+    };
+  };
 };
 
 type ProjectSummary = {
@@ -294,11 +313,21 @@ export function TextureAtlasApp({ basePath = "" }: { basePath?: string }) {
     });
   }, [load]);
 
+  const refreshApiStatus = useCallback(async () => {
+    const response = await fetch("/api/generate-texture-atlases");
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error ?? "Could not load image AI status.");
+    }
+
+    setApiStatus(data as ApiStatus);
+    return data as ApiStatus;
+  }, []);
+
   useEffect(() => {
-    fetch("/api/generate-texture-atlases")
-      .then((response) => response.json())
-      .then((data: ApiStatus) => setApiStatus(data))
-      .catch(() =>
+    queueMicrotask(() => {
+      refreshApiStatus().catch(() =>
         setApiStatus({
           configured: false,
           provider: "google",
@@ -309,7 +338,8 @@ export function TextureAtlasApp({ basePath = "" }: { basePath?: string }) {
           acceptedTypes: acceptedImageTypes,
         }),
       );
-  }, []);
+    });
+  }, [refreshApiStatus]);
 
   const refreshAccount = useCallback(async () => {
     const response = await fetch("/api/dashboard/account");
@@ -426,7 +456,7 @@ export function TextureAtlasApp({ basePath = "" }: { basePath?: string }) {
         {loading ? (
           <LoadingSurface />
         ) : route.view === "account" ? (
-          <AccountSurface accountStatus={accountStatus} refreshAccount={refreshAccount} setNotice={setNotice} />
+          <AccountSurface accountStatus={accountStatus} refreshAccount={refreshAccount} refreshApiStatus={refreshApiStatus} setNotice={setNotice} />
         ) : route.view === "utilities" ? (
           <UtilitiesSurface apiStatus={apiStatus} accountStatus={accountStatus} refreshAccount={refreshAccount} setNotice={setNotice} />
         ) : route.view === "projects" ? (
@@ -481,16 +511,20 @@ function LoadingSurface() {
 function AccountSurface({
   accountStatus,
   refreshAccount,
+  refreshApiStatus,
   setNotice,
 }: {
   accountStatus: AccountStatus | null;
   refreshAccount: () => Promise<AccountStatus>;
+  refreshApiStatus: () => Promise<ApiStatus>;
   setNotice: (notice: Notice) => void;
 }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("");
+  const [savingModel, setSavingModel] = useState(false);
   const [selectedCreditPackId, setSelectedCreditPackId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -498,6 +532,13 @@ function AccountSurface({
       setNotice({ tone: "error", message: error instanceof Error ? error.message : "Could not load account." });
     });
   }, [refreshAccount, setNotice]);
+
+  useEffect(() => {
+    const imageAi = accountStatus?.settings?.imageAi;
+    if (imageAi) {
+      queueMicrotask(() => setSelectedModel(`${imageAi.provider}:${imageAi.model}`));
+    }
+  }, [accountStatus?.settings?.imageAi]);
 
   async function changePassword(event: React.FormEvent) {
     event.preventDefault();
@@ -536,8 +577,49 @@ function AccountSurface({
     }
   }
 
+  async function saveImageModel(event: React.FormEvent) {
+    event.preventDefault();
+
+    const [provider, ...modelParts] = selectedModel.split(":");
+    const model = modelParts.join(":");
+    if (!provider || !model) {
+      setNotice({ tone: "error", message: "Choose a generation model before saving." });
+      return;
+    }
+
+    setSavingModel(true);
+
+    try {
+      const response = await fetch("/api/dashboard/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            imageAi: { provider, model },
+          },
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not save model settings.");
+      }
+
+      await Promise.all([refreshAccount(), refreshApiStatus()]);
+      setNotice({ tone: "success", message: "Generation model saved." });
+    } catch (error) {
+      setNotice({ tone: "error", message: error instanceof Error ? error.message : "Could not save model settings." });
+    } finally {
+      setSavingModel(false);
+    }
+  }
+
   const displayName = accountStatus?.user?.name || accountStatus?.user?.email || "Account";
   const balance = accountStatus?.credits.balance;
+  const imageAiStatus = accountStatus?.settings?.imageAiStatus;
+  const modelOptions = accountStatus?.settings?.imageModelOptions ?? [];
+  const savedModel = accountStatus?.settings?.imageAi;
+  const modelIsChanged = Boolean(savedModel && selectedModel && selectedModel !== `${savedModel.provider}:${savedModel.model}`);
   const packages = accountStatus?.creditPacks ?? [
     { id: "starter", credits: 25, label: "Starter pack", priceUsd: 39, description: "For a few small texture batches.", configured: false, priceEnvVar: "PADDLE_STARTER_PRICE_ID" },
     { id: "production", credits: 100, label: "Production pack", priceUsd: 129, description: "Best fit for regular scenery work.", configured: false, priceEnvVar: "PADDLE_PRODUCTION_PRICE_ID" },
@@ -572,6 +654,47 @@ function AccountSurface({
               </div>
             </div>
           </div>
+
+          <form onSubmit={saveImageModel} className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#182033] text-[var(--accent)]">
+                <SlidersHorizontal className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-semibold">Generation model</h2>
+                <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                  Projects and utilities use this saved model for new generation jobs.
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-5 block text-sm font-medium" htmlFor="image-model">
+              Image model
+              <select
+                id="image-model"
+                value={selectedModel}
+                onChange={(event) => setSelectedModel(event.target.value)}
+                disabled={!accountStatus || savingModel}
+                className="mt-2 h-11 w-full rounded-md border border-[var(--line)] bg-[#0d1018] px-3 text-sm outline-none transition focus:border-[var(--accent)] disabled:opacity-60"
+              >
+                {modelOptions.map((option) => (
+                  <option key={`${option.provider}:${option.model}`} value={`${option.provider}:${option.model}`}>
+                    {option.label} ({option.provider})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="mt-3 rounded-md border border-[var(--line)] bg-[#0d1018] p-3 text-xs leading-5 text-[var(--muted)]">
+              {imageAiStatus?.configured
+                ? `Ready: ${imageAiStatus.provider} · ${imageAiStatus.model}`
+                : `Provider key needed: ${imageAiStatus?.missingEnvVar ?? "image AI provider key"}`}
+            </div>
+
+            <PrimaryButton type="submit" busy={savingModel} disabled={!accountStatus || savingModel || !modelIsChanged} className="mt-4 h-11 w-full">
+              Save model
+            </PrimaryButton>
+          </form>
 
           <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5">
             <div className="flex items-start justify-between gap-4">

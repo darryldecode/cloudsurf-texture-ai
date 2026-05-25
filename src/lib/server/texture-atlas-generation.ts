@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { buildSingleAtlasPrompt } from "@/lib/generation/prompt";
-import { generateImageEdit, getImageAiStatus } from "@/lib/server/image-ai-provider";
+import { generateImageEdit, getImageAiStatus, type ImageAiSelection } from "@/lib/server/image-ai-provider";
 import { readR2ImageFile, saveR2ImageFile } from "@/lib/server/image-storage";
 import type { GeneratedAtlas } from "@/lib/types";
 
@@ -26,22 +26,26 @@ async function createAtlasImage(
   images: File[],
   exclusions: string,
   kind: "materials" | "facade",
+  imageAi?: ImageAiSelection,
 ): Promise<GeneratedAtlas> {
   const size = kind === "materials" ? "1024x1536" : "1024x1024";
   const aspectRatio = kind === "materials" ? "2:3" : "1:1";
   const target = kind === "materials" ? { width: 1024, height: 2048 } : { width: 4096, height: 4096 };
-  const response = await generateImageEdit({
-    images: images.map((image) => ({
-      data: image,
-      mimeType: image.type || "image/png",
-      filename: image.name || `${kind}-reference.png`,
-    })),
-    prompt: buildSingleAtlasPrompt(exclusions, kind),
-    size,
-    aspectRatio,
-    quality: "high",
-    outputFormat: "png",
-  });
+  const response = await generateImageEdit(
+    {
+      images: images.map((image) => ({
+        data: image,
+        mimeType: image.type || "image/png",
+        filename: image.name || `${kind}-reference.png`,
+      })),
+      prompt: buildSingleAtlasPrompt(exclusions, kind),
+      size,
+      aspectRatio,
+      quality: "high",
+      outputFormat: "png",
+    },
+    imageAi,
+  );
   const output = await toPngBuffer(response.b64Json, target.width, target.height);
   const saved = await saveR2ImageFile({
     userId,
@@ -78,12 +82,14 @@ export async function generateTextureAtlases({
   exclusions,
   images = [],
   imagePaths = [],
+  imageAi,
 }: {
   userId: string;
   workflowId: string;
   exclusions: string;
   images?: File[];
   imagePaths?: string[];
+  imageAi?: ImageAiSelection;
 }) {
   const storedImages = await filesFromStoragePaths(userId, imagePaths);
   const allImages = [...images, ...storedImages];
@@ -97,8 +103,8 @@ export async function generateTextureAtlases({
   }
 
   const [materials, facade] = await Promise.all([
-    createAtlasImage(userId, workflowId, allImages, exclusions, "materials"),
-    createAtlasImage(userId, workflowId, allImages, exclusions, "facade"),
+    createAtlasImage(userId, workflowId, allImages, exclusions, "materials", imageAi),
+    createAtlasImage(userId, workflowId, allImages, exclusions, "facade", imageAi),
   ]);
 
   return [materials, facade];

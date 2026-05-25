@@ -1,10 +1,11 @@
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { buildEmissivePrompt } from "@/lib/generation/emissive-prompt";
-import { generateImageEdit, getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
+import { generateImageEdit, getImageAiStatus, imageAiConfigurationMessage, type ImageAiSelection } from "@/lib/server/image-ai-provider";
 import { readR2ImageFile, saveR2ImageFile } from "@/lib/server/image-storage";
 import { requireUserId } from "@/lib/server/auth";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
+import { ensureUserSettings } from "@/lib/server/user-settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,21 +44,26 @@ async function generateEmissiveMap({
   sourceImage,
   width,
   height,
+  imageAi,
 }: {
   userId: string;
   jobId: string;
   sourceImage: Buffer;
   width: number;
   height: number;
+  imageAi: ImageAiSelection;
 }) {
-  const response = await generateImageEdit({
-    images: [{ data: sourceImage, mimeType: "image/png", filename: "utility-source-atlas.png" }],
-    prompt: buildEmissivePrompt(),
-    size: supportedSize(width, height),
-    aspectRatio: aspectRatioForSize(width, height),
-    quality: "high",
-    outputFormat: "png",
-  });
+  const response = await generateImageEdit(
+    {
+      images: [{ data: sourceImage, mimeType: "image/png", filename: "utility-source-atlas.png" }],
+      prompt: buildEmissivePrompt(),
+      size: supportedSize(width, height),
+      aspectRatio: aspectRatioForSize(width, height),
+      quality: "high",
+      outputFormat: "png",
+    },
+    imageAi,
+  );
 
   const output = await sharp(Buffer.from(response.b64Json, "base64"))
     .resize(width, height, { fit: "fill" })
@@ -83,11 +89,6 @@ async function generateEmissiveMap({
 }
 
 export async function POST(request: Request) {
-  const aiStatus = getImageAiStatus();
-  if (!aiStatus.configured) {
-    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
-  }
-
   let formData: FormData;
 
   try {
@@ -113,6 +114,12 @@ export async function POST(request: Request) {
 
   try {
     const userId = await requireUserId();
+    const settings = await ensureUserSettings(userId);
+    const aiStatus = getImageAiStatus(settings.imageAi);
+    if (!aiStatus.configured) {
+      return jsonError(imageAiConfigurationMessage(aiStatus), 503);
+    }
+
     const jobId = `utility_${crypto.randomUUID()}`;
     if (imagePath && !imagePath.startsWith(`${userId}/`)) return jsonError("Invalid image path.", 403);
     const debit = await debitCredit(userId, "utility_emissive_generation", jobId);
@@ -126,6 +133,7 @@ export async function POST(request: Request) {
         sourceImage: source.buffer,
         width: source.width,
         height: source.height,
+        imageAi: settings.imageAi,
       });
 
       return NextResponse.json({ jobId, emissiveMap, credits: { balance: debit.balance } });

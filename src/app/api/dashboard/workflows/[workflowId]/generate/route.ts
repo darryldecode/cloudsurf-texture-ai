@@ -3,7 +3,8 @@ import { getWorkflow, saveWorkflow, touchProject } from "@/lib/server/dashboard-
 import { withUser } from "@/lib/server/api-response";
 import { generateTextureAtlases } from "@/lib/server/texture-atlas-generation";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
-import { getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
+import { getImageAiStatus, imageAiConfigurationMessage, type ImageAiSelection } from "@/lib/server/image-ai-provider";
+import { ensureUserSettings } from "@/lib/server/user-settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
-async function finishGeneration(userId: string, workflowId: string) {
+async function finishGeneration(userId: string, workflowId: string, imageAi: ImageAiSelection) {
   const workflow = await getWorkflow(userId, workflowId);
   if (!workflow) return;
 
@@ -24,6 +25,7 @@ async function finishGeneration(userId: string, workflowId: string) {
       workflowId,
       exclusions: workflow.exclusions,
       imagePaths,
+      imageAi,
     });
     const completedAt = new Date().toISOString();
 
@@ -55,12 +57,13 @@ async function finishGeneration(userId: string, workflowId: string) {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ workflowId: string }> }) {
-  const aiStatus = getImageAiStatus();
-  if (!aiStatus.configured) {
-    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
-  }
-
   return withUser(async (userId) => {
+    const settings = await ensureUserSettings(userId);
+    const aiStatus = getImageAiStatus(settings.imageAi);
+    if (!aiStatus.configured) {
+      return jsonError(imageAiConfigurationMessage(aiStatus), 503);
+    }
+
     const { workflowId } = await context.params;
     const body = (await request.json().catch(() => ({}))) as { exclusions?: string };
     const workflow = await getWorkflow(userId, workflowId);
@@ -94,7 +97,7 @@ export async function POST(request: Request, context: { params: Promise<{ workfl
       throw error;
     }
 
-    after(() => finishGeneration(userId, workflowId));
+    after(() => finishGeneration(userId, workflowId, settings.imageAi));
 
     return NextResponse.json({ workflow: nextWorkflow, credits: { balance: debit.balance } });
   });

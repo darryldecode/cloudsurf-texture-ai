@@ -1,10 +1,11 @@
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { buildPbrPrompt } from "@/lib/generation/pbr-prompt";
-import { generateImageEdit, getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
+import { generateImageEdit, getImageAiStatus, imageAiConfigurationMessage, type ImageAiSelection } from "@/lib/server/image-ai-provider";
 import { readR2ImageFile, saveR2ImageFile } from "@/lib/server/image-storage";
 import { requireUserId } from "@/lib/server/auth";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
+import { ensureUserSettings } from "@/lib/server/user-settings";
 import type { AtlasKind, PbrMapKind } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -44,6 +45,7 @@ async function generatePbrMap({
   width,
   height,
   kind,
+  imageAi,
 }: {
   userId: string;
   workflowId: string;
@@ -52,15 +54,19 @@ async function generatePbrMap({
   width: number;
   height: number;
   kind: PbrMapKind;
+  imageAi: ImageAiSelection;
 }) {
-  const response = await generateImageEdit({
-    images: [{ data: sourceImage, mimeType: "image/png", filename: `${atlasKind}-atlas.png` }],
-    prompt: buildPbrPrompt(kind),
-    size: supportedSize(width, height),
-    aspectRatio: aspectRatioForSize(width, height),
-    quality: "high",
-    outputFormat: "png",
-  });
+  const response = await generateImageEdit(
+    {
+      images: [{ data: sourceImage, mimeType: "image/png", filename: `${atlasKind}-atlas.png` }],
+      prompt: buildPbrPrompt(kind),
+      size: supportedSize(width, height),
+      aspectRatio: aspectRatioForSize(width, height),
+      quality: "high",
+      outputFormat: "png",
+    },
+    imageAi,
+  );
   const output = await resizePbrOutput(response.b64Json, width, height, kind);
   const saved = await saveR2ImageFile({
     userId,
@@ -82,11 +88,6 @@ async function generatePbrMap({
 }
 
 export async function POST(request: Request) {
-  const aiStatus = getImageAiStatus();
-  if (!aiStatus.configured) {
-    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
-  }
-
   let body: unknown;
 
   try {
@@ -117,6 +118,12 @@ export async function POST(request: Request) {
 
   try {
     const userId = await requireUserId();
+    const settings = await ensureUserSettings(userId);
+    const aiStatus = getImageAiStatus(settings.imageAi);
+    if (!aiStatus.configured) {
+      return jsonError(imageAiConfigurationMessage(aiStatus), 503);
+    }
+
     if (!texturePath.startsWith(`${userId}/`)) return jsonError("Invalid texture path.", 403);
     const debit = await debitCredit(userId, "pbr_generation", `${workflowId}:${atlasKind}`);
     if (!debit.ok) return insufficientCreditsResponse(debit.balance);
@@ -133,6 +140,7 @@ export async function POST(request: Request) {
             width,
             height,
             kind,
+            imageAi: settings.imageAi,
           }),
         ),
       );

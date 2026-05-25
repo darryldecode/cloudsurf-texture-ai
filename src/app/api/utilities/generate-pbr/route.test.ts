@@ -1,4 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/server/auth", () => ({
+  requireUserId: vi.fn(() => Promise.resolve("user-1")),
+}));
+
+vi.mock("@/lib/server/user-settings", () => ({
+  ensureUserSettings: vi.fn(() => Promise.resolve({ imageAi: { provider: "google", model: "gemini-2.5-flash-image" } })),
+}));
+
 import { POST } from "./route";
 
 describe("utility PBR generation route", () => {
@@ -12,6 +21,7 @@ describe("utility PBR generation route", () => {
 
   it("rejects PBR generation when the image AI provider key is not configured", async () => {
     const formData = new FormData();
+    formData.set("imagePath", "user-1/utilities/sources/pbr/source.png");
 
     const response = await POST(new Request("http://localhost/api/utilities/generate-pbr", { method: "POST", body: formData }));
     const data = await response.json();

@@ -8,6 +8,7 @@ import {
 } from "@/lib/server/texture-atlas-generation";
 import { getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
+import { ensureUserSettings } from "@/lib/server/user-settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +18,9 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function GET() {
-  const aiStatus = getImageAiStatus();
+  const userId = await requireUserId();
+  const settings = await ensureUserSettings(userId);
+  const aiStatus = getImageAiStatus(settings.imageAi);
 
   return NextResponse.json({
     configured: aiStatus.configured,
@@ -31,11 +34,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const aiStatus = getImageAiStatus();
-  if (!aiStatus.configured) {
-    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
-  }
-
   let formData: FormData;
 
   try {
@@ -73,11 +71,17 @@ export async function POST(request: Request) {
 
   try {
     const userId = await requireUserId();
+    const settings = await ensureUserSettings(userId);
+    const aiStatus = getImageAiStatus(settings.imageAi);
+    if (!aiStatus.configured) {
+      return jsonError(imageAiConfigurationMessage(aiStatus), 503);
+    }
+
     const debit = await debitCredit(userId, "atlas_generation", workflowId);
     if (!debit.ok) return insufficientCreditsResponse(debit.balance);
 
     try {
-      const atlases = await generateTextureAtlases({ userId, workflowId, exclusions, images, imagePaths });
+      const atlases = await generateTextureAtlases({ userId, workflowId, exclusions, images, imagePaths, imageAi: settings.imageAi });
 
       return NextResponse.json({
         workflowId,

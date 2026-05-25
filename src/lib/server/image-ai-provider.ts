@@ -5,6 +5,16 @@ export type ImageOutputFormat = "png" | "jpeg" | "webp";
 export type ImageGenerationQuality = "low" | "medium" | "high" | "auto";
 export type GoogleImageSize = "0.5K" | "1K" | "2K" | "4K";
 
+export type ImageAiSelection = {
+  provider: ImageAiProviderName;
+  model: string;
+};
+
+export type ImageModelOption = ImageAiSelection & {
+  label: string;
+  description: string;
+};
+
 export type ImageSource = {
   data: Buffer | Uint8Array | ArrayBuffer | File;
   mimeType?: string;
@@ -39,11 +49,107 @@ const DEFAULT_GOOGLE_IMAGE_MODEL = "gemini-2.5-flash-image";
 const DEFAULT_GOOGLE_GEMINI_3_IMAGE_SIZE: GoogleImageSize = "2K";
 const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-2";
 
+const BUILT_IN_MODEL_OPTIONS: ImageModelOption[] = [
+  {
+    provider: "google",
+    model: DEFAULT_GOOGLE_IMAGE_MODEL,
+    label: "Gemini 2.5 Flash Image",
+    description: "Balanced default for fast texture generation.",
+  },
+  {
+    provider: "google",
+    model: "gemini-3.1-flash-image-preview",
+    label: "Gemini 3.1 Flash Image Preview",
+    description: "Preview Gemini image model for higher fidelity generation.",
+  },
+  {
+    provider: "google",
+    model: "gemini-3-pro-image-preview",
+    label: "Gemini 3 Pro Image Preview",
+    description: "Preview Gemini Pro image model for detailed outputs.",
+  },
+  {
+    provider: "openai",
+    model: DEFAULT_OPENAI_IMAGE_MODEL,
+    label: "GPT Image 2",
+    description: "OpenAI image editing model for texture generation.",
+  },
+];
+
 let openai: OpenAI | null = null;
 
 function getConfiguredProvider(): ImageAiProviderName {
   const provider = process.env.IMAGE_AI_PROVIDER?.trim().toLowerCase();
   return provider === "openai" || provider === "google" ? provider : DEFAULT_PROVIDER;
+}
+
+function configuredModelForProvider(provider: ImageAiProviderName) {
+  if (provider === "openai") {
+    return process.env.OPENAI_IMAGE_MODEL || DEFAULT_OPENAI_IMAGE_MODEL;
+  }
+
+  return process.env.GOOGLE_IMAGE_MODEL || DEFAULT_GOOGLE_IMAGE_MODEL;
+}
+
+function optionLabel(model: string) {
+  return model
+    .split("-")
+    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+function envModelOptions(provider: ImageAiProviderName) {
+  const raw = provider === "openai" ? process.env.OPENAI_IMAGE_MODEL_OPTIONS : process.env.GOOGLE_IMAGE_MODEL_OPTIONS;
+  return raw
+    ?.split(",")
+    .map((model) => model.trim())
+    .filter(Boolean)
+    .map<ImageModelOption>((model) => ({
+      provider,
+      model,
+      label: optionLabel(model),
+      description: "Configured image model.",
+    })) ?? [];
+}
+
+function modelOptionKey(option: ImageAiSelection) {
+  return `${option.provider}:${option.model}`;
+}
+
+export function getDefaultImageAiSelection(): ImageAiSelection {
+  const provider = getConfiguredProvider();
+  return {
+    provider,
+    model: configuredModelForProvider(provider),
+  };
+}
+
+export function getImageModelOptions() {
+  const defaultSelection = getDefaultImageAiSelection();
+  const options = [
+    ...BUILT_IN_MODEL_OPTIONS,
+    ...envModelOptions("google"),
+    ...envModelOptions("openai"),
+    {
+      ...defaultSelection,
+      label: optionLabel(defaultSelection.model),
+      description: "Environment default image model.",
+    },
+  ];
+  const seen = new Set<string>();
+
+  return options.filter((option) => {
+    const key = modelOptionKey(option);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+export function isImageModelAllowed(selection: ImageAiSelection) {
+  return getImageModelOptions().some((option) => option.provider === selection.provider && option.model === selection.model);
 }
 
 function getOpenAI() {
@@ -55,14 +161,14 @@ function getOpenAI() {
   return openai;
 }
 
-export function getImageAiStatus(): ImageAiStatus {
-  const provider = getConfiguredProvider();
+export function getImageAiStatus(selection?: ImageAiSelection): ImageAiStatus {
+  const provider = selection?.provider ?? getConfiguredProvider();
 
   if (provider === "openai") {
     return {
       configured: Boolean(process.env.OPENAI_API_KEY),
       provider,
-      model: process.env.OPENAI_IMAGE_MODEL || DEFAULT_OPENAI_IMAGE_MODEL,
+      model: selection?.model || configuredModelForProvider(provider),
       missingEnvVar: process.env.OPENAI_API_KEY ? undefined : "OPENAI_API_KEY",
     };
   }
@@ -70,7 +176,7 @@ export function getImageAiStatus(): ImageAiStatus {
   return {
     configured: Boolean(process.env.GEMINI_API_KEY),
     provider,
-    model: process.env.GOOGLE_IMAGE_MODEL || DEFAULT_GOOGLE_IMAGE_MODEL,
+    model: selection?.model || configuredModelForProvider(provider),
     missingEnvVar: process.env.GEMINI_API_KEY ? undefined : "GEMINI_API_KEY",
   };
 }
@@ -81,8 +187,8 @@ export function imageAiConfigurationMessage(status = getImageAiStatus()) {
     : `Image AI provider "${status.provider}" is not configured.`;
 }
 
-export async function generateImageEdit(request: ImageGenerationRequest): Promise<ImageGenerationResult> {
-  const status = getImageAiStatus();
+export async function generateImageEdit(request: ImageGenerationRequest, selection?: ImageAiSelection): Promise<ImageGenerationResult> {
+  const status = getImageAiStatus(selection);
 
   if (!status.configured) {
     throw new Error(imageAiConfigurationMessage(status));

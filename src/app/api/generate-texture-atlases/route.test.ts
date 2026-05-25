@@ -30,6 +30,10 @@ vi.mock("@/lib/server/image-ai-provider", () => ({
   ),
 }));
 
+vi.mock("@/lib/server/user-settings", () => ({
+  ensureUserSettings: vi.fn(() => Promise.resolve({ imageAi: { provider: "google", model: "gemini-2.5-flash-image" } })),
+}));
+
 vi.mock("@/lib/server/texture-atlas-generation", () => ({
   ACCEPTED_ATLAS_IMAGE_TYPES: new Set(["image/png", "image/jpeg", "image/webp"]),
   MAX_ATLAS_IMAGES: 16,
@@ -41,6 +45,7 @@ import { debitCredit, refundCredit } from "@/lib/server/credits";
 import { requireUserId } from "@/lib/server/auth";
 import { generateTextureAtlases } from "@/lib/server/texture-atlas-generation";
 import { getImageAiStatus } from "@/lib/server/image-ai-provider";
+import { ensureUserSettings } from "@/lib/server/user-settings";
 import { GET, POST } from "./route";
 
 describe("texture atlas generation route", () => {
@@ -51,6 +56,12 @@ describe("texture atlas generation route", () => {
     vi.mocked(requireUserId).mockResolvedValue("user-1");
     vi.mocked(debitCredit).mockResolvedValue({ ok: true, balance: 9 });
     vi.mocked(generateTextureAtlases).mockResolvedValue([]);
+    vi.mocked(ensureUserSettings).mockResolvedValue({
+      userId: "user-1",
+      imageAi: { provider: "google", model: "gemini-2.5-flash-image" },
+      createdAt: "2026-05-25T00:00:00.000Z",
+      updatedAt: "2026-05-25T00:00:00.000Z",
+    });
     vi.mocked(getImageAiStatus).mockReturnValue({
       configured: false,
       provider: "google",
@@ -72,13 +83,15 @@ describe("texture atlas generation route", () => {
   it("rejects generation when the image AI provider key is not configured", async () => {
     const formData = new FormData();
     formData.set("workflowId", "workflow-1");
+    formData.set("imagePaths", "user-1/workflows/workflow-1/reference.png");
 
     const response = await POST(new Request("http://localhost/api/generate-texture-atlases", { method: "POST", body: formData }));
     const data = await response.json();
 
     expect(response.status).toBe(503);
     expect(data.error).toContain("GEMINI_API_KEY");
-    expect(requireUserId).not.toHaveBeenCalled();
+    expect(requireUserId).toHaveBeenCalled();
+    expect(ensureUserSettings).toHaveBeenCalledWith("user-1");
     expect(debitCredit).not.toHaveBeenCalled();
   });
 
@@ -112,6 +125,14 @@ describe("texture atlas generation route", () => {
     expect(response.status).toBe(500);
     expect(data.error).toBe("OpenAI failed");
     expect(debitCredit).toHaveBeenCalledWith("user-1", "atlas_generation", "workflow-1");
+    expect(generateTextureAtlases).toHaveBeenCalledWith({
+      userId: "user-1",
+      workflowId: "workflow-1",
+      exclusions: "",
+      images: [],
+      imagePaths: ["user-1/workflows/workflow-1/reference.png"],
+      imageAi: { provider: "google", model: "gemini-2.5-flash-image" },
+    });
     expect(refundCredit).toHaveBeenCalledWith("user-1", "atlas_generation", "workflow-1");
   });
 });

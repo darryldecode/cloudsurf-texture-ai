@@ -12,7 +12,7 @@ vi.mock("openai", () => ({
   toFile: openAiMocks.toFile,
 }));
 
-import { generateImageEdit, getImageAiStatus } from "./image-ai-provider";
+import { generateImageEdit, getImageAiStatus, getImageModelOptions, isImageModelAllowed } from "./image-ai-provider";
 
 describe("image AI provider", () => {
   beforeEach(() => {
@@ -43,6 +43,30 @@ describe("image AI provider", () => {
       provider: "openai",
       model: "gpt-image-2",
       missingEnvVar: "OPENAI_API_KEY",
+    });
+  });
+
+  it("reports a selected user model independently of the environment default", () => {
+    process.env.GEMINI_API_KEY = "gemini-key";
+    process.env.GOOGLE_IMAGE_MODEL = "gemini-2.5-flash-image";
+
+    expect(getImageAiStatus({ provider: "google", model: "gemini-3.1-flash-image-preview" })).toEqual({
+      configured: true,
+      provider: "google",
+      model: "gemini-3.1-flash-image-preview",
+      missingEnvVar: undefined,
+    });
+  });
+
+  it("exposes built-in and environment-configured model options for settings", () => {
+    process.env.GOOGLE_IMAGE_MODEL_OPTIONS = "custom-google-image";
+
+    expect(isImageModelAllowed({ provider: "google", model: "gemini-2.5-flash-image" })).toBe(true);
+    expect(getImageModelOptions()).toContainEqual({
+      provider: "google",
+      model: "custom-google-image",
+      label: "Custom Google Image",
+      description: "Configured image model.",
     });
   });
 

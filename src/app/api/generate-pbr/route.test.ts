@@ -1,4 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/server/auth", () => ({
+  requireUserId: vi.fn(() => Promise.resolve("user-1")),
+}));
+
+vi.mock("@/lib/server/user-settings", () => ({
+  ensureUserSettings: vi.fn(() => Promise.resolve({ imageAi: { provider: "google", model: "gemini-2.5-flash-image" } })),
+}));
+
 import { POST } from "./route";
 
 describe("PBR generation route", () => {
@@ -17,7 +26,7 @@ describe("PBR generation route", () => {
         body: JSON.stringify({
           workflowId: "workflow-1",
           atlasKind: "materials",
-          textureUrl: "/storage/workflows/workflow-1/materials.png",
+          texturePath: "user-1/workflows/workflow-1/materials.png",
           width: 1024,
           height: 2048,
         }),

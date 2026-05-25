@@ -1,10 +1,11 @@
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { buildPbrPrompt } from "@/lib/generation/pbr-prompt";
-import { generateImageEdit, getImageAiStatus, imageAiConfigurationMessage } from "@/lib/server/image-ai-provider";
+import { generateImageEdit, getImageAiStatus, imageAiConfigurationMessage, type ImageAiSelection } from "@/lib/server/image-ai-provider";
 import { readR2ImageFile, saveR2ImageFile } from "@/lib/server/image-storage";
 import { requireUserId } from "@/lib/server/auth";
 import { debitCredit, refundCredit, insufficientCreditsResponse } from "@/lib/server/credits";
+import { ensureUserSettings } from "@/lib/server/user-settings";
 import type { PbrMapKind } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -59,6 +60,7 @@ async function generatePbrMap({
   width,
   height,
   kind,
+  imageAi,
 }: {
   userId: string;
   jobId: string;
@@ -66,15 +68,19 @@ async function generatePbrMap({
   width: number;
   height: number;
   kind: PbrMapKind;
+  imageAi: ImageAiSelection;
 }) {
-  const response = await generateImageEdit({
-    images: [{ data: sourceImage, mimeType: "image/png", filename: "utility-source-atlas.png" }],
-    prompt: buildPbrPrompt(kind),
-    size: supportedSize(width, height),
-    aspectRatio: aspectRatioForSize(width, height),
-    quality: "high",
-    outputFormat: "png",
-  });
+  const response = await generateImageEdit(
+    {
+      images: [{ data: sourceImage, mimeType: "image/png", filename: "utility-source-atlas.png" }],
+      prompt: buildPbrPrompt(kind),
+      size: supportedSize(width, height),
+      aspectRatio: aspectRatioForSize(width, height),
+      quality: "high",
+      outputFormat: "png",
+    },
+    imageAi,
+  );
   const output = await resizePbrOutput(response.b64Json, width, height, kind);
   const saved = await saveR2ImageFile({
     userId,
@@ -96,11 +102,6 @@ async function generatePbrMap({
 }
 
 export async function POST(request: Request) {
-  const aiStatus = getImageAiStatus();
-  if (!aiStatus.configured) {
-    return jsonError(imageAiConfigurationMessage(aiStatus), 503);
-  }
-
   let formData: FormData;
 
   try {
@@ -126,6 +127,12 @@ export async function POST(request: Request) {
 
   try {
     const userId = await requireUserId();
+    const settings = await ensureUserSettings(userId);
+    const aiStatus = getImageAiStatus(settings.imageAi);
+    if (!aiStatus.configured) {
+      return jsonError(imageAiConfigurationMessage(aiStatus), 503);
+    }
+
     const jobId = `utility_${crypto.randomUUID()}`;
     if (imagePath && !imagePath.startsWith(`${userId}/`)) return jsonError("Invalid image path.", 403);
     const debit = await debitCredit(userId, "utility_pbr_generation", jobId);
@@ -142,6 +149,7 @@ export async function POST(request: Request) {
             width: source.width,
             height: source.height,
             kind,
+            imageAi: settings.imageAi,
           }),
         ),
       );
