@@ -490,7 +490,7 @@ function AccountSurface({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
-  const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
+  const [selectedCreditPackId, setSelectedCreditPackId] = useState<string | null>(null);
 
   useEffect(() => {
     refreshAccount().catch((error) => {
@@ -542,28 +542,7 @@ function AccountSurface({
     { id: "production", credits: 100, label: "Production pack", priceUsd: 129, description: "Best fit for regular scenery work.", configured: false, priceEnvVar: "PADDLE_PRODUCTION_PRICE_ID" },
     { id: "studio", credits: 250, label: "Studio pack", priceUsd: 279, description: "Lowest per-credit price for larger runs.", configured: false, priceEnvVar: "PADDLE_STUDIO_PRICE_ID" },
   ];
-
-  async function buyCredits(packId: string) {
-    setBuyingPackId(packId);
-
-    try {
-      const response = await fetch("/api/dashboard/credits/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId }),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not start checkout.");
-      }
-
-      window.location.assign(data.url);
-    } catch (error) {
-      setBuyingPackId(null);
-      setNotice({ tone: "error", message: error instanceof Error ? error.message : "Could not start checkout." });
-    }
-  }
+  const selectedCreditPack = packages.find((pack) => pack.id === selectedCreditPackId);
 
   return (
     <section className="space-y-6">
@@ -609,8 +588,8 @@ function AccountSurface({
                 <button
                   key={pack.id}
                   type="button"
-                  disabled={buyingPackId !== null || !accountStatus?.billing?.configured || !pack.configured}
-                  onClick={() => void buyCredits(pack.id)}
+                  disabled={!accountStatus}
+                  onClick={() => setSelectedCreditPackId(pack.id)}
                   className="flex min-h-14 items-center justify-between gap-4 rounded-md border border-[var(--line)] bg-[#151823] px-4 py-3 text-left text-sm transition hover:border-[#4b5264] hover:bg-[#1d2230] disabled:opacity-60"
                 >
                   <span>
@@ -619,15 +598,11 @@ function AccountSurface({
                       {pack.credits} credits · ${pack.priceUsd}
                     </span>
                   </span>
-                  <span className="text-xs font-medium text-[var(--accent)]">{buyingPackId === pack.id ? "Opening..." : "Buy credits"}</span>
+                  <span className="text-xs font-medium text-[var(--accent)]">Buy credits</span>
                 </button>
               ))}
             </div>
-            {!accountStatus?.billing?.configured ? (
-              <p className="mt-3 text-xs text-[var(--muted)]">
-                Paddle billing is not configured{accountStatus?.billing?.missingEnvVar ? `: set ${accountStatus.billing.missingEnvVar}` : ""}.
-              </p>
-            ) : null}
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">Online payments are pending. Credit purchases are handled manually for now.</p>
           </div>
         </div>
 
@@ -683,7 +658,47 @@ function AccountSurface({
           </PrimaryButton>
         </form>
       </div>
+
+      {selectedCreditPack ? <BuyCreditsModal pack={selectedCreditPack} onClose={() => setSelectedCreditPackId(null)} /> : null}
     </section>
+  );
+}
+
+function BuyCreditsModal({ pack, onClose }: { pack: NonNullable<AccountStatus["creditPacks"]>[number]; onClose: () => void }) {
+  const contactEmail = "contact@cloudsurf-texture-ai.0xdd.cloud";
+  const subject = encodeURIComponent(`Cloudsurf Texture AI credits: ${pack.label}`);
+
+  return (
+    <Modal title="Buy credits" onClose={onClose}>
+      <div className="space-y-5">
+        <div className="rounded-md border border-[var(--line)] bg-[#0d1018] p-4">
+          <p className="text-sm font-semibold">{pack.label}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {pack.credits} credits · ${pack.priceUsd}
+          </p>
+        </div>
+
+        <div className="rounded-md border border-[rgb(244_184_96/0.24)] bg-[rgb(244_184_96/0.09)] p-4 text-sm leading-6 text-[#f8d8a3]">
+          Payment checkout is still pending. To buy credits, please contact{" "}
+          <a className="font-semibold text-foreground underline underline-offset-4" href={`mailto:${contactEmail}?subject=${subject}`}>
+            {contactEmail}
+          </a>
+          .
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className="h-10 rounded-md border border-[var(--line)] bg-[#151823] px-4 text-sm font-semibold text-foreground transition hover:bg-[#1d2230]">
+            Close
+          </button>
+          <a
+            href={`mailto:${contactEmail}?subject=${subject}`}
+            className="inline-flex h-10 items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[#06120b] transition hover:bg-[var(--accent-strong)]"
+          >
+            Email sales
+          </a>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
