@@ -21,6 +21,7 @@ import {
   WandSparkles,
   Wrench,
 } from "lucide-react";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { AppRouteState, AtlasKind, GeneratedAtlas, PbrMap, PbrMapKind, Project, ReferenceImage, TextureWorkflow } from "@/lib/types";
@@ -362,8 +363,8 @@ export function TextureAtlasApp({ basePath = "" }: { basePath?: string }) {
             className="flex items-center gap-3 text-left"
             aria-label="Open project dashboard"
           >
-            <span className="flex size-9 items-center justify-center rounded-md bg-[var(--accent)] text-[#06120b]">
-              <Sparkles className="size-5" />
+            <span className="relative flex size-9 shrink-0 overflow-hidden rounded-md border border-white/10 bg-[#090a0f]">
+              <Image src="/cloudsurf-mark.png" alt="" fill sizes="36px" className="object-cover" loading="eager" />
             </span>
             <span>
               <span className="block text-sm font-semibold">Cloudsurf Texture AI</span>
