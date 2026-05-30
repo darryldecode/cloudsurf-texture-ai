@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { EmailCodeAuthForm } from "@/components/email-code-auth-form";
+import { noIndexMetadata } from "@/lib/site-metadata";
+
+export const metadata: Metadata = {
+  title: "Verify Email",
+  ...noIndexMetadata,
+};
 
 function getSearchValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;

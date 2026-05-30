@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/site-metadata";
 import { LegalPage, type LegalSection } from "../_components/legal-page";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | Cloudsurf Texture AI",
-  description: "Privacy policy for Cloudsurf Texture AI.",
-};
+export const metadata: Metadata = publicPageMetadata({
+  title: "Privacy Policy",
+  description: "Privacy policy for Cloudsurf Texture AI account, project, uploaded image, generated asset, payment, and provider data.",
+  path: "/privacy-policy",
+});
 
 const sections: LegalSection[] = [
   {

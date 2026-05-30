@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, CircleDollarSign, Sparkles } from "lucide-react";
 import { CREDIT_PACKS } from "@/lib/credit-packs";
+import { publicPageMetadata } from "@/lib/site-metadata";
 import { PageHero, PublicPageShell } from "../_components/public-chrome";
 
-export const metadata: Metadata = {
-  title: "Pricing | Cloudsurf Texture AI",
-  description: "Credit pack pricing for Cloudsurf Texture AI texture atlas and PBR generation.",
-};
+export const metadata: Metadata = publicPageMetadata({
+  title: "Pricing",
+  description: "Credit pack pricing for Cloudsurf Texture AI texture atlas, PBR map, and emissive texture generation.",
+  path: "/pricing",
+});
 
 const usageItems = [
   "Texture atlas generation: 1 credit for material and facade atlas outputs.",

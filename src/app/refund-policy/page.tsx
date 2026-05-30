@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/site-metadata";
 import { LegalPage, type LegalSection } from "../_components/legal-page";
 
-export const metadata: Metadata = {
-  title: "Refund Policy | Cloudsurf Texture AI",
-  description: "Refund policy for Cloudsurf Texture AI credit purchases.",
-};
+export const metadata: Metadata = publicPageMetadata({
+  title: "Refund Policy",
+  description: "Refund policy for Cloudsurf Texture AI prepaid credit purchases, used credits, Paddle processing, and refund eligibility.",
+  path: "/refund-policy",
+});
 
 const sections: LegalSection[] = [
   {

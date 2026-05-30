@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/site-metadata";
 import { LegalPage, type LegalSection } from "../_components/legal-page";
 
-export const metadata: Metadata = {
-  title: "Terms and Conditions | Cloudsurf Texture AI",
-  description: "Terms for using Cloudsurf Texture AI.",
-};
+export const metadata: Metadata = publicPageMetadata({
+  title: "Terms and Conditions",
+  description: "Terms for using Cloudsurf Texture AI, including accounts, credits, uploaded references, generated outputs, and Paddle payments.",
+  path: "/terms-and-conditions",
+});
 
 const sections: LegalSection[] = [
   {

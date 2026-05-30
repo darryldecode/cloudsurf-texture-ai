@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { siteConfig } from "@/lib/site-metadata";
 
 const navLinks = [
   { href: "/pricing", label: "Pricing" },
@@ -8,7 +9,7 @@ const navLinks = [
   { href: "/privacy-policy", label: "Privacy Policy" },
   { href: "/refund-policy", label: "Refund Policy" },
 ];
-const contactHref = "mailto:contact@cloudsurf-texture-ai.0xdd.cloud";
+const contactHref = `mailto:${siteConfig.contactEmail}`;
 
 export function PublicHeader() {
   return (

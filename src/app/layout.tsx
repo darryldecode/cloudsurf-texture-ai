@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { defaultKeywords, siteConfig } from "@/lib/site-metadata";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,47 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cloudsurf Texture AI",
-  description: "Architectural texture atlas generation workspace.",
+  metadataBase: new URL(siteConfig.url),
+  applicationName: siteConfig.name,
+  title: {
+    default: "Cloudsurf Texture AI | AI Texture Atlas Generator",
+    template: "%s | Cloudsurf Texture AI",
+  },
+  description: siteConfig.description,
+  keywords: defaultKeywords,
+  authors: [{ name: "Cloudsurf Software Development Services" }],
+  creator: "Cloudsurf Software Development Services",
+  publisher: "Cloudsurf Software Development Services",
+  category: "design software",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Cloudsurf Texture AI | AI Texture Atlas Generator",
+    description: siteConfig.description,
+    url: "/",
+    siteName: siteConfig.name,
+    type: "website",
+    locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Cloudsurf Texture AI texture atlas workspace preview",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cloudsurf Texture AI | AI Texture Atlas Generator",
+    description: siteConfig.description,
+    images: ["/opengraph-image"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "64x64" },

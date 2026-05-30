@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthView } from "@neondatabase/auth/react/ui";
 import { authViewPaths } from "@neondatabase/auth/react/ui/server";
 import "@neondatabase/auth/ui/css";
 import { Providers } from "@/app/providers";
+import { noIndexMetadata } from "@/lib/site-metadata";
+
+export const metadata: Metadata = {
+  title: "Authentication",
+  ...noIndexMetadata,
+};
 
 function getSearchValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;

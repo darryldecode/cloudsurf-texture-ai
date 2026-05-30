@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, FolderKanban, Moon } from "lucide-react";
+import { absoluteUrl, siteConfig } from "@/lib/site-metadata";
 import { PublicFooter, PublicHeader } from "./_components/public-chrome";
 
 const features = [
@@ -42,8 +43,29 @@ const processSteps = [
 ];
 
 export default function LandingPage() {
+  const softwareApplicationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: siteConfig.name,
+    applicationCategory: "DesignApplication",
+    operatingSystem: "Web",
+    url: absoluteUrl("/"),
+    description: siteConfig.description,
+    offers: {
+      "@type": "Offer",
+      url: absoluteUrl("/pricing"),
+      priceCurrency: "USD",
+    },
+  };
+
   return (
     <main className="min-h-screen bg-[#090a0f] text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(softwareApplicationJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       <PublicHeader />
 
       <section className="border-b border-[var(--line)] bg-[radial-gradient(circle_at_top_left,#162033_0,#090a0f_34rem)] px-4 py-20 sm:px-6 lg:py-28">

@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { LoginFormNoSsr } from "@/components/login-form-no-ssr";
 import { getCurrentUser } from "@/lib/server/auth";
+import { noIndexMetadata } from "@/lib/site-metadata";
+
+export const metadata: Metadata = {
+  title: "Login",
+  ...noIndexMetadata,
+};
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const params = await searchParams;
